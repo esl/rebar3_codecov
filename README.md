@@ -1,26 +1,47 @@
 rebar3_codecov
 =====
 
-Parse .coverdata files to json
-
-Build
------
-
-    $ rebar3 compile
+A rebar3 plugin which converts .coverdata files to JSON format, compatible
+with https://codecov.io.
 
 Use
 ---
 
-Add the plugin to your rebar config:
+Add the plugin to your rebar config, register it as a
+post-hook and enable code coverage.
 
-    {plugins, [
-        { rebar3_codecov, ".*", {git, "git@host:user/rebar3_codecov.git", {tag, "0.1.0"}}}
-    ]}.
+```
+{plugins, [
+    { rebar3_codecov, {git,
+                          "https://github.com/zofpolkowska/rebar3_codecov.git", {branch, "WIP"}}}
+]}.
 
-Then just call your plugin directly in an existing application:
+{provider_hooks,
+ [
+  {post, [{cover, {codecov, analyze}}]}
+ ]}.
 
+{cover_enabled, true}.
+```
 
-    $ rebar3 rebar3_codecov
-    ===> Fetching rebar3_codecov
-    ===> Compiling rebar3_codecov
-    <Plugin Output>
+Configure Travis according to https://docs.travis-ci.com/user/getting-started/
+
+The minimum .travis.yml should look more or less like the following:
+
+```
+language: erlang
+
+otp_release:
+    - 20.3
+
+script:
+    rebar3 ct
+
+install:
+    travis_retry pip install --user codecov
+
+after_success:
+    codecov
+```
+
+Go to https://codecov.io and add your repository to see the results of code coverage
