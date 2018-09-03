@@ -9,7 +9,7 @@
 -define(NAMESPACE, codecov).
 -define(PROVIDER, analyze).
 -define(DEPS, [app_discovery]).
--define(DESC, "Parce .coverdata files to JSON").
+-define(DESC, "Parse .coverdata files to JSON").
 
 %% Public API
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
