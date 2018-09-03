@@ -62,28 +62,13 @@ format_array_to_list(Module, CallsPerLineArray, Acc) ->
 get_source_path(Module) when is_atom(Module) ->
     try
         AbsPath = proplists:get_value(source, Module:module_info(compile)),
-        string_prefix(AbsPath, get_repo_dir(Module))
+        [Prefix, Suffix] = string:split(AbsPath, "src/"),
+        filename:join("/src", Suffix)
     catch Error:Reason ->
               Issue = io_lib:format("get_source_path/1 failed, module=~p", [Module]),
               rebar_api:warn("~p~n~p~n~p~n~p~n", [Issue, Error, Reason, erlang:get_stacktrace()]),
               atom_to_list(Module) ++ ".erl"
     end.
-
-get_repo_dir(Module) ->
-    RepoPath = proplists:get_value(source, Module:module_info(compile)),
-    Suffix = "src/" ++ atom_to_list(Module) ++ ".erl",
-    string_suffix(RepoPath, Suffix).
-
-string_prefix([H|String], [H|Prefix]) ->
-    string_prefix(String, Prefix);
-
-string_prefix(String, []) ->
-    String.
-
-string_suffix(String, Suffix) ->
-    StringR = lists:reverse(String),
-    SuffixR = lists:reverse(Suffix),
-    lists:reverse(string_prefix(StringR, SuffixR)).
 
 analyze(Args) ->
     try
