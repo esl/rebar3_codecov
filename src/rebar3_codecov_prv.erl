@@ -9,19 +9,19 @@
 -define(NAMESPACE, codecov).
 -define(PROVIDER, analyze).
 -define(DEPS, [app_discovery]).
--define(DESC, "Parse .coverdata files to JSON").
+-define(DESC, "Converts .coverdata files to codecov compatible JSON").
 
 %% Public API
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
     Provider = providers:create([
-                                 {name, ?PROVIDER},            % The 'user friendly' name of the task
+                                 {name, ?PROVIDER},
                                  {namespace, ?NAMESPACE},
-                                 {module, ?MODULE},            % The module implementation of the task
-                                 {bare, true},                 % The task can be run by the user, always true
-                                 {deps, ?DEPS},                % The list of dependencies
-                                 {example, "rebar3 rebar3_codecov"}, % How to use the plugin
-                                 {opts, []},                   % list of options understood by the plugin
+                                 {module, ?MODULE},
+                                 {bare, true},
+                                 {deps, ?DEPS},
+                                 {example, "rebar3 rebar3_codecov"},
+                                 {opts, []},
                                  {short_desc, ?DESC},
                                  {desc, ?DESC}
                                 ]),

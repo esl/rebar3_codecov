@@ -1,5 +1,5 @@
 {application, rebar3_codecov,
- [{description, "Parse .coverdata files to json"},
+ [{description, "Rebar3 plugin converting .coverdata files to codecov compatible JSON"},
   {vsn, "0.1.0"},
   {registered, []},
   {applications,
