@@ -9,6 +9,7 @@
 -define(NAMESPACE, codecov).
 -define(PROVIDER, analyze).
 -define(DEPS, [app_discovery]).
+-define(DESC, "Parce .coverdata files to JSON").
 
 %% Public API
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
@@ -21,8 +22,8 @@ init(State) ->
                                  {deps, ?DEPS},                % The list of dependencies
                                  {example, "rebar3 rebar3_codecov"}, % How to use the plugin
                                  {opts, []},                   % list of options understood by the plugin
-                                 {short_desc, "Parse .coverdata files to json"},
-                                 {desc, "Parse .coverdata files to json"}
+                                 {short_desc, ?DESC},
+                                 {desc, ?DESC}
                                 ]),
     {ok, rebar_state:add_provider(State, Provider)}.
 
