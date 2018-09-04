@@ -66,8 +66,8 @@ get_source_path(Module) when is_atom(Module) ->
     catch Error:Reason ->
               SourcePath = atom_to_list(Module) ++ ".erl",
               Issue = io_lib:format("Failed to calculate the source path of module ~p~n
-                                     falling back to ~p", [Module, SourcePath]),
-              rebar_api:warn("~p~n~p~n~p~n~p~n", [Issue, Error, Reason, erlang:get_stacktrace()])
+                                     falling back to ~s", [Module, SourcePath]),
+              rebar_api:warn("~s~n~p~n~p~n~p~n", [Issue, Error, Reason, erlang:get_stacktrace()])
     end.
 
 analyze(InFile, OutFile) ->
