@@ -10,6 +10,7 @@
 -define(PROVIDER, analyze).
 -define(DEPS, [app_discovery]).
 -define(DESC, "Converts .coverdata files to codecov compatible JSON").
+-define(OUT_FILE, "codecov.json").
 
 %% Public API
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
@@ -33,7 +34,7 @@ do(State) ->
     BuildDirectory = rebar_dir:profile_dir(State),
     CoverDirectory = filename:join([BuildDirectory, "cover/*.coverdata"]),
     [InFile] = filelib:wildcard(CoverDirectory),
-    analyze([InFile, "codecov.json"]),
+    analyze(InFile, ?OUT_FILE),
     {ok, State}.
 
 -spec format_error(any()) ->  iolist().
@@ -70,9 +71,8 @@ get_source_path(Module) when is_atom(Module) ->
               atom_to_list(Module) ++ ".erl"
     end.
 
-analyze(Args) ->
+analyze(InFile, OutFile) ->
     try
-        [InFile, OutFile] = Args,
         cover:start(),
         rebar_api:info("importing ~s~n", [InFile]),
         ok = cover:import(InFile),
