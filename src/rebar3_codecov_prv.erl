@@ -1,8 +1,6 @@
 -module(rebar3_codecov_prv).
 -behaviour(provider).
 
--include("include/rebar3_codecov_logger.hrl").
-
 %% API
 -export([init/1, do/1, format_error/1]).
 
@@ -30,8 +28,8 @@ init(State) ->
 
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
 do(State) ->
-    rebar_api:info("~nExporting cover data ...~n", []),
     BuildDirectory = rebar_dir:profile_dir(State),
+    rebar_api:info("~nExporting cover data from ~p...~n", [BuildDirectory]),
     CoverDirectory = filename:join([BuildDirectory, "cover/*.coverdata"]),
     [InFile] = filelib:wildcard(CoverDirectory),
     analyze(InFile, ?OUT_FILE),
@@ -66,9 +64,10 @@ get_source_path(Module) when is_atom(Module) ->
         [Prefix, Suffix] = string:split(AbsPath, "src/"),
         filename:join("/src", Suffix)
     catch Error:Reason ->
-              Issue = io_lib:format("get_source_path/1 failed, module=~p", [Module]),
-              rebar_api:warn("~p~n~p~n~p~n~p~n", [Issue, Error, Reason, erlang:get_stacktrace()]),
-              atom_to_list(Module) ++ ".erl"
+              SourcePath = atom_to_list(Module) ++ ".erl",
+              Issue = io_lib:format("Failed to calculate the source path of module ~p~n
+                                     falling back to ~p", [Module, SourcePath]),
+              rebar_api:warn("~p~n~p~n~p~n~p~n", [Issue, Error, Reason, erlang:get_stacktrace()])
     end.
 
 analyze(InFile, OutFile) ->
