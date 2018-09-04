@@ -13,7 +13,7 @@ post-hook and enable code coverage.
 ```
 {plugins, [
     { rebar3_codecov, {git,
-                          "https://github.com/zofpolkowska/rebar3_codecov.git", {branch, "WIP"}}}
+                          "https://github.com/zofpolkowska/rebar3_codecov.git", {branch, "master"}}}
 ]}.
 
 {provider_hooks,
