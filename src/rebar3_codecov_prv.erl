@@ -28,6 +28,10 @@ init(State) ->
 
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
 do(State) ->
+    [AppInfo] = rebar_state:project_apps(State),
+    EbinDir = rebar_app_info:ebin_dir(AppInfo),
+    rebar_api:info("~p~n~n~n", [EbinDir]),
+    code:add_paths([EbinDir]),
     rebar_api:info("~nExporting cover data from _build/test/cover...~n", []),
     Files = filelib:wildcard("_build/test/cover/*.coverdata"),
     Data = lists:flatmap( fun analyze/1, Files),
