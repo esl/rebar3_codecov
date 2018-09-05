@@ -29,8 +29,10 @@ init(State) ->
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
 do(State) ->
     rebar_api:info("~nExporting cover data from _build/test/cover...~n", []),
-    [InFile] = filelib:wildcard("_build/test/cover/*.coverdata"),
-    analyze(InFile, ?OUT_FILE),
+    Files = filelib:wildcard("_build/test/cover/*.coverdata"),
+    Data = lists:flatmap( fun analyze/1, Files),
+    rebar_api:info("exporting ~s~n", [?OUT_FILE]),
+    to_json(Data),
     {ok, State}.
 
 -spec format_error(any()) ->  iolist().
@@ -38,14 +40,23 @@ format_error(Reason) ->
     io_lib:format("~p", [Reason]).
 
 %% Private API
+analyze(InFile) ->
+    try
+        cover:start(),
+        rebar_api:info("importing ~s~n", [InFile]),
+        ok = cover:import(InFile),
+        Modules = cover:imported_modules(),
+        {result, Result, _} = cover:analyse(Modules, calls, line),
+        Result
+    catch Error:Reason ->
+              rebar_api:abort("~p~n~p~n~p~n",[Error, Reason, erlang:get_stacktrace()])
+    end.
 
-to_json(OutputFile) ->
-    Modules = cover:imported_modules(),
-    {result, Result, _} = cover:analyse(Modules, calls, line),
-    Mod2Data = lists:foldl(fun add_cover_line_into_array/2, #{}, Result),
+to_json(Data) ->
+    Mod2Data = lists:foldl(fun add_cover_line_into_array/2, #{}, Data),
     JSON = maps:fold(fun format_array_to_list/3, [], Mod2Data),
     Binary = jiffy:encode(#{<<"coverage">> => {JSON}}),
-    file:write_file(OutputFile, Binary).
+    file:write_file(?OUT_FILE, Binary).
 
 add_cover_line_into_array({{Module, Line}, CallTimes}, Acc) ->
     CallsPerLineArray = maps:get(Module, Acc, array:new({default, null})),
@@ -68,13 +79,4 @@ get_source_path(Module) when is_atom(Module) ->
               rebar_api:warn("~s~n~p~n~p~n~p~n", [Issue, Error, Reason, erlang:get_stacktrace()])
     end.
 
-analyze(InFile, OutFile) ->
-    try
-        cover:start(),
-        rebar_api:info("importing ~s~n", [InFile]),
-        ok = cover:import(InFile),
-        rebar_api:info("exporting ~s~n", [OutFile]),
-        to_json(OutFile)
-    catch Error:Reason ->
-              rebar_api:abort("~p~n~p~n~p~n",[Error, Reason, erlang:get_stacktrace()])
-    end.
+
