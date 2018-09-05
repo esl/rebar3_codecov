@@ -6,7 +6,7 @@
 
 -define(NAMESPACE, codecov).
 -define(PROVIDER, analyze).
--define(DEPS, [app_discovery]).
+-define(DEPS, [{default, app_discovery}]).
 -define(DESC, "Converts .coverdata files to codecov compatible JSON").
 -define(OUT_FILE, "codecov.json").
 
