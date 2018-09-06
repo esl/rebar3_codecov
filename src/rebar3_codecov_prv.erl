@@ -28,8 +28,12 @@ init(State) ->
 
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
 do(State) ->
+    {RawOpts, _} = rebar_state:command_parsed_args(State),
+    Apps = filter_apps(RawOpts, State),
+    lists:map(fun(App) ->  add_profile_ebin_path(App, State) end, Apps),
     AppsInfo = rebar_state:project_apps(State),
-    lists:map(fun add_app_ebin_path/1, AppsInfo),
+    Defaults = lists:map(fun(App) -> rebar_app_info:ebin_dir(App) end, AppsInfo), 
+    code:add_paths(Defaults),
     rebar_api:info("~nExporting cover data from _build/test/cover...~n", []),
     Files = filelib:wildcard("_build/test/cover/*.coverdata"),
     Data = analyze(Files),
@@ -81,6 +85,20 @@ get_source_path(Module) when is_atom(Module) ->
               rebar_api:warn("~s~n~p~n~p~n~p~n", [Issue, Error, Reason, erlang:get_stacktrace()])
     end.
 
-add_app_ebin_path(AppInfo) ->
-    EbinDir = rebar_app_info:ebin_dir(AppInfo),
-    code:add_paths([EbinDir]).
+add_profile_ebin_path(App, State) ->
+    ProfileDir = rebar_dir:profile_dir(rebar_state:opts(State), [default, test]),
+    Build = rebar_dir:make_relative_path(ProfileDir, rebar_dir:root_dir(State)),
+    Beams = filename:join([Build, "lib/", App, "ebin/"]),
+    rebar_api:debug("~n~p~n~p~n~p~n", [App, ProfileDir, Beams]),
+    code:add_paths([Beams]).
+
+
+filter_apps(RawOpts, State) ->
+    RawApps = proplists:get_all_values(app, RawOpts),
+    Apps = lists:foldl(fun(String, Acc) -> rebar_string:lexemes(String, ",") ++ Acc end, [], RawApps),
+    case Apps of
+        [] ->
+            ProjectApps = rebar_state:project_apps(State),
+            lists:map(fun(A) -> erlang:binary_to_atom(rebar_app_info:name(A), utf8) end, ProjectApps);
+        _  -> Apps
+    end.
