@@ -28,15 +28,11 @@ init(State) ->
 
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
 do(State) ->
-    %% TODO map apps
-    [AppInfo] = rebar_state:project_apps(State),
-    EbinDir = rebar_app_info:ebin_dir(AppInfo),
-    rebar_api:info("~p~n~n~n", [EbinDir]),
-    code:add_paths([EbinDir]),
+    AppsInfo = rebar_state:project_apps(State),
+    lists:map(fun add_app_ebin_path/1, AppsInfo),
     rebar_api:info("~nExporting cover data from _build/test/cover...~n", []),
     Files = filelib:wildcard("_build/test/cover/*.coverdata"),
     Data = analyze(Files),
-%%    Data = lists:flatmap( fun analyze/1, Files),
     rebar_api:info("exporting ~s~n", [?OUT_FILE]),
     to_json(Data),
     {ok, State}.
@@ -85,4 +81,6 @@ get_source_path(Module) when is_atom(Module) ->
               rebar_api:warn("~s~n~p~n~p~n~p~n", [Issue, Error, Reason, erlang:get_stacktrace()])
     end.
 
-
+add_app_ebin_path(AppInfo) ->
+    EbinDir = rebar_app_info:ebin_dir(AppInfo),
+    code:add_paths([EbinDir]).
