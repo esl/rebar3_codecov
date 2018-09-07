@@ -77,19 +77,19 @@ get_source_path(Module) when is_atom(Module) ->
     try
         AbsPath = proplists:get_value(source, Module:module_info(compile)),
         [Prefix, Suffix] = string:split(AbsPath, "src/"),
-        filename:join("/src", Suffix)
+        filename:join("src", Suffix)
     catch Error:Reason ->
-              SourcePath = atom_to_list(Module) ++ ".erl",
+              Path = filename:join(["src/", atom_to_list(Module) ++ ".erl"]),
               Issue = io_lib:format("Failed to calculate the source path of module ~p~n
-                                     falling back to ~s", [Module, SourcePath]),
-              rebar_api:warn("~s~n~p~n~p~n~p~n", [Issue, Error, Reason, erlang:get_stacktrace()])
+                                     falling back to ~s", [Module, Path]),
+              rebar_api:warn("~s~n~p~n~p~n~p~n", [Issue, Error, Reason, erlang:get_stacktrace()]),
+              Path
     end.
 
 add_profile_ebin_path(App, State) ->
     ProfileDir = rebar_dir:profile_dir(rebar_state:opts(State), [default, test]),
     Build = rebar_dir:make_relative_path(ProfileDir, rebar_dir:root_dir(State)),
     Beams = filename:join([Build, "lib/", App, "ebin/"]),
-    rebar_api:debug("~n~p~n~p~n~p~n", [App, ProfileDir, Beams]),
     code:add_paths([Beams]).
 
 
