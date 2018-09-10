@@ -10,7 +10,7 @@
   {env,[]},
   {modules, []},
 
-  {maintainers, []},
+  {maintainers, ["Zofia Polkowska"]},
   {licenses, []},
-  {links, []}
+  {links, [{"Github", "https://github.com/zofpolkowska/rebar3_codecov"}]}
  ]}.
