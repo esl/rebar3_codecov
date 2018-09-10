@@ -20,7 +20,9 @@ init(State) ->
                                  {bare, true},
                                  {deps, ?DEPS},
                                  {example, "rebar3 rebar3_codecov"},
-                                 {opts, []},
+                                 {opts, [
+                                        {path, $p, "path", string, "location of the *.coverdata files"}
+                                        ]},
                                  {short_desc, ?DESC},
                                  {desc, ?DESC}
                                 ]),
@@ -36,7 +38,7 @@ do(State) ->
                                      rebar_dir:make_relative_path(EBin, rebar_dir:root_dir(State)) end, AppsInfo),
     code:add_paths(Defaults),
     rebar_api:info("~nExporting cover data from _build/test/cover...~n", []),
-    Files = filelib:wildcard("_build/test/cover/*.coverdata"),
+    Files = lists:flatmap(fun get_coverdata_files/1, AppsInfo),
     Data = analyze(Files),
     rebar_api:info("exporting ~s~n", [?OUT_FILE]),
     to_json(Data),
@@ -103,3 +105,16 @@ filter_apps(RawOpts, State) ->
             lists:map(fun(A) -> erlang:binary_to_atom(rebar_app_info:name(A), utf8) end, ProjectApps);
         _  -> Apps
     end.
+
+get_coverdata_files(AppInfo) ->
+    Opts = rebar_app_info:opts(AppInfo),
+    CoverDataPath = case dict:find(codecov_opts, Opts) of
+                        {ok, CodecovOpts} ->
+                            case proplists:get_value(path, CodecovOpts, ["_build/test/cover"]) of
+                                undefined -> ["_build/test/cover/*.coverdata"];
+                                Paths ->    lists:map(fun(P) -> filename:join([P, "*.coverdata"]) end, Paths)
+                            end;
+                        _ ->
+                            ["_build/test/cover/*.coverdata"]
+                    end,
+    lists:flatmap(fun filelib:wildcard/1, CoverDataPath).
