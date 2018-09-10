@@ -41,7 +41,7 @@ do(State) ->
     Files = lists:flatmap(fun get_coverdata_files/1, AppsInfo),
     Data = analyze(Files),
     rebar_api:info("exporting ~s~n", [?OUT_FILE]),
-    to_json(Data),
+    to_json(Data)
     {ok, State}.
 
 -spec format_error(any()) ->  iolist().
