@@ -18,7 +18,9 @@ post-hook and enable code coverage.
 
 {provider_hooks,
  [
-  {post, [{cover, {codecov, analyze}}]}
+  %% Use ct, eunit, or both if you test your project with both frameworks.
+  {post, [{ct, {codecov, analyze}}]},
+  {post, [{eunit, {codecov, analyze}}]}
  ]}.
 
 {cover_enabled, true}.
@@ -42,6 +44,23 @@ install:
 
 after_success:
     codecov
+```
+
+Alternatively, you can call the plugin directly.
+
+```
+rebar3 codecov analyze path="_build/test/cover"
+```
+
+By default the plugin will look for the *.coverdata files in
+_build/test/cover directory. If you want to specify a different location,
+add to your rebar.config the list of directories
+
+```
+{codecov_opts,
+ [
+  {path, ["path/to/*.coverdata/files"]}
+ ]}.
 ```
 
 Go to https://codecov.io and add your repository to see the results of code coverage
