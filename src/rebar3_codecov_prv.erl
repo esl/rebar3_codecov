@@ -32,7 +32,8 @@ init(State) ->
 do(State) ->
     {RawOpts, _} = rebar_state:command_parsed_args(State),
     Apps = filter_apps(RawOpts, State),
-    lists:map(fun(App) ->  add_profile_ebin_path(App, State) end, Apps),
+    lists:map(fun(App) ->  add_profile_ebin_path(App, State),
+                           add_app_ebin_path(App) end, Apps),
     AppsInfo = rebar_state:project_apps(State),
     Defaults = lists:map(fun(App) -> EBin = rebar_app_info:ebin_dir(App),
                                      rebar_dir:make_relative_path(EBin, rebar_dir:root_dir(State)) end, AppsInfo),
@@ -95,6 +96,10 @@ add_profile_ebin_path(App, State) ->
     Beams = filename:join([Build, "lib/", App, "ebin/"]),
     code:add_paths([Beams]).
 
+add_app_ebin_path(App) ->
+    Wildcard = filename:join(["_build/**/lib", App, "ebin"]),
+    Paths = filelib:wildcard(Wildcard),
+    code:add_paths(Paths).
 
 filter_apps(RawOpts, State) ->
     RawApps = proplists:get_all_values(app, RawOpts),
