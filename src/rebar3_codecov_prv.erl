@@ -80,13 +80,16 @@ format_array_to_list(Module, CallsPerLineArray, Acc) ->
 get_source_path(Module) when is_atom(Module) ->
     Name = atom_to_list(Module)++".erl",
     try filelib:wildcard([filename:join(["src/**/", Name])]) of
-        [P] -> P
+        [P] -> P;
+        _ -> Issue = io_lib:format("Failed to calculate the source path of module ~p~n", [Module]),
+             rebar_api:warn("~s~n", [Issue]),
+             []
     catch
         Error:Reason ->
-              Issue = io_lib:format("Failed to calculate the source path of module ~p~n
+            Issue = io_lib:format("Failed to calculate the source path of module ~p~n
                                      falling back to ~s", [Module, Name]),
-              rebar_api:warn("~s~n~p~n~p~n~p~n", [Issue, Error, Reason, erlang:get_stacktrace()]),
-             Name
+            rebar_api:warn("~s~n~p~n~p~n~p~n", [Issue, Error, Reason, erlang:get_stacktrace()]),
+            Name
     end.
 
 add_profile_ebin_path(App, State) ->
