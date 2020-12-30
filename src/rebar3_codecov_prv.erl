@@ -14,17 +14,15 @@
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
     Provider = providers:create([
-                                 {name, ?PROVIDER},
-                                 {namespace, ?NAMESPACE},
-                                 {module, ?MODULE},
-                                 {bare, true},
-                                 {deps, ?DEPS},
-                                 {example, "rebar3 rebar3_codecov"},
-                                 {opts, [
-                                        {path, $p, "path", string, "location of the *.coverdata files"}
-                                        ]},
-                                 {short_desc, ?DESC},
-                                 {desc, ?DESC}
+                                    {name, ?PROVIDER},
+                                    {namespace, ?NAMESPACE},
+                                    {module, ?MODULE},
+                                    {bare, true},
+                                    {deps, ?DEPS},
+                                    {example, "rebar3 codecov"},
+                                    {opts, []},
+                                    {short_desc, ?DESC},
+                                    {desc, ?DESC}
                                 ]),
     {ok, rebar_state:add_provider(State, Provider)}.
 
@@ -32,13 +30,16 @@ init(State) ->
 do(State) ->
     {RawOpts, _} = rebar_state:command_parsed_args(State),
     Apps = filter_apps(RawOpts, State),
-    lists:map(fun(App) ->  add_profile_ebin_path(App, State),
-                           add_app_ebin_path(App) end, Apps),
+    lists:map(fun(App) ->
+                  add_profile_ebin_path(App, State),
+                  add_app_ebin_path(App)
+              end, Apps),
     AppsInfo = rebar_state:project_apps(State),
-    Defaults = lists:map(fun(App) -> EBin = rebar_app_info:ebin_dir(App),
-                                     rebar_dir:make_relative_path(EBin, rebar_dir:root_dir(State)) end, AppsInfo),
+    Defaults = lists:map(fun(App) ->
+                             EBin = rebar_app_info:ebin_dir(App),
+                             rebar_dir:make_relative_path(EBin, rebar_dir:root_dir(State))
+                         end, AppsInfo),
     code:add_paths(Defaults),
-    rebar_api:info("~nExporting cover data from _build/test/cover...~n", []),
     Files = lists:flatmap(fun get_coverdata_files/1, AppsInfo),
     Data = analyze(Files),
     rebar_api:info("exporting ~s~n", [?OUT_FILE]),
@@ -53,13 +54,17 @@ format_error(Reason) ->
 analyze(Files) ->
     try
         cover:start(),
-        lists:map(fun(F) ->  cover:import(F),
-                             rebar_api:info("importing ~s~n", [F]) end, Files),
+        lists:map(fun(F) ->
+                      cover:import(F),
+                      rebar_api:info("importing ~s~n", [F])
+                  end,
+                  Files),
         Modules = cover:imported_modules(),
         {result, Result, _} = cover:analyse(Modules, calls, line),
         Result
-    catch Error:Reason ->
-              rebar_api:abort("~p~n~p~n~p~n",[Error, Reason, erlang:get_stacktrace()])
+    catch
+        Error:Reason ->
+            rebar_api:abort("~p~n~p~n~p~n",[Error, Reason, erlang:get_stacktrace()])
     end.
 
 to_json(Data) ->
@@ -81,9 +86,10 @@ get_source_path(Module) when is_atom(Module) ->
     Name = atom_to_list(Module)++".erl",
     try filelib:wildcard([filename:join(["src/**/", Name])]) of
         [P] -> P;
-        _ -> Issue = io_lib:format("Failed to calculate the source path of module ~p~n", [Module]),
-             rebar_api:warn("~s~n", [Issue]),
-             []
+        _ ->
+            Issue = io_lib:format("Failed to calculate the source path of module ~p~n", [Module]),
+            rebar_api:warn("~s~n", [Issue]),
+            []
     catch
         Error:Reason ->
             Issue = io_lib:format("Failed to calculate the source path of module ~p~n
@@ -117,11 +123,10 @@ get_coverdata_files(AppInfo) ->
     Opts = rebar_app_info:opts(AppInfo),
     CoverDataPath = case dict:find(codecov_opts, Opts) of
                         {ok, CodecovOpts} ->
-                            case proplists:get_value(path, CodecovOpts, ["_build/test/cover"]) of
-                                undefined -> ["_build/test/cover/*.coverdata"];
-                                Paths ->    lists:map(fun(P) -> filename:join([P, "*.coverdata"]) end, Paths)
-                            end;
+                            Paths = proplists:get_value(path, CodecovOpts, ["_build/test/cover"]),
+                            lists:map(fun(P) -> filename:join([P, "*.coverdata"]) end, Paths);
                         _ ->
                             ["_build/test/cover/*.coverdata"]
                     end,
+    rebar_api:info("Exporting cover data from ~p~n", [CoverDataPath]),
     lists:flatmap(fun filelib:wildcard/1, CoverDataPath).
