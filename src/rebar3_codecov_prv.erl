@@ -8,7 +8,8 @@
 -define(PROVIDER, analyze).
 -define(DEPS, [{default, app_discovery}]).
 -define(DESC, "Converts .coverdata files to codecov compatible JSON").
--define(OUT_FILE, "codecov.json").
+-define(JSON_OUT_FILE, "codecov.json").
+-define(LCOV_OUT_FILE, "lcov.info").
 
 %% Public API
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
@@ -19,8 +20,13 @@ init(State) ->
                                     {module, ?MODULE},
                                     {bare, true},
                                     {deps, ?DEPS},
-                                    {example, "rebar3 codecov"},
-                                    {opts, []},
+                                    {example, "rebar3 codecov analyze --lcov --json false"},
+                                    {opts, [
+                                        {lcov, undefined, "lcov", boolean,
+                                         "export data in lcov format (false by default)"},
+                                        {json, undefined, "json", boolean,
+                                         "export data in json format (true by default)"}
+                                    ]},
                                     {short_desc, ?DESC},
                                     {desc, ?DESC}
                                 ]),
@@ -42,8 +48,7 @@ do(State) ->
     code:add_paths(Defaults),
     Files = lists:flatmap(fun get_coverdata_files/1, AppsInfo),
     Data = analyze(Files),
-    rebar_api:info("exporting ~s~n", [?OUT_FILE]),
-    to_json(Data),
+    export(Data, State),
     {ok, State}.
 
 -spec format_error(any()) ->  iolist().
@@ -67,11 +72,31 @@ analyze(Files) ->
             rebar_api:abort("~p~n~p~n~p~n",[Error, Reason, erlang:get_stacktrace()])
     end.
 
-to_json(Data) ->
+export(Data, State) ->
     Mod2Data = lists:foldl(fun add_cover_line_into_array/2, #{}, Data),
+    Formats = export_formats(State),
+    to_json(Mod2Data, Formats),
+    to_lcov(Mod2Data, Formats).
+
+export_formats(State) ->
+    {Args, _} = rebar_state:command_parsed_args(State),
+    LCov = proplists:get_value(lcov, Args, false),
+    JSON = proplists:get_value(json, Args, true),
+    #{lcov => LCov, json => JSON}.
+
+to_json(Mod2Data, #{json := true}) ->
+    rebar_api:info("exporting ~s~n", [?JSON_OUT_FILE]),
     JSON = maps:fold(fun format_array_to_list/3, [], Mod2Data),
     Binary = jiffy:encode(#{<<"coverage">> => {JSON}}),
-    file:write_file(?OUT_FILE, Binary).
+    file:write_file(?JSON_OUT_FILE, Binary);
+to_json(_, _) -> ok.
+
+to_lcov(Mod2Data, #{lcov := true}) ->
+    rebar_api:info("exporting ~s~n", [?LCOV_OUT_FILE]),
+    {ok, LCovFile} = file:open(?LCOV_OUT_FILE, [write]),
+    maps:fold(fun module_to_lcov/3, LCovFile, Mod2Data),
+    file:close(LCovFile);
+to_lcov(_, _) -> ok.
 
 add_cover_line_into_array({{Module, Line}, CallTimes}, Acc) ->
     CallsPerLineArray = maps:get(Module, Acc, array:new({default, null})),
@@ -81,6 +106,17 @@ format_array_to_list(Module, CallsPerLineArray, Acc) ->
     ListOfCallTimes = array:to_list(CallsPerLineArray),
     BinPath = list_to_binary(get_source_path(Module)),
     [{BinPath, ListOfCallTimes}|Acc].
+
+module_to_lcov(Module, CallsPerLineArray, LCovFile) ->
+    io:format(LCovFile, "SF:~s~n", [get_source_path(Module)]),
+    CallTimes = array:to_orddict(CallsPerLineArray),
+    InstrumentedLines = [{N, C} || {N, C} <- CallTimes, C =/= null],
+    ExecutedLines = [{N, C} || {N, C} <- InstrumentedLines, C > 0],
+    [io:format(LCovFile, "DA:~p,~p~n", [N, C]) || {N, C} <- InstrumentedLines],
+    io:format(LCovFile, "LH:~p~n", [length(ExecutedLines)]),
+    io:format(LCovFile, "LF:~p~n", [length(InstrumentedLines)]),
+    io:format(LCovFile, "end_of_record~n", []),
+    LCovFile.
 
 get_source_path(Module) when is_atom(Module) ->
     Name = atom_to_list(Module)++".erl",
