@@ -108,6 +108,10 @@ format_array_to_list(Module, CallsPerLineArray, Acc) ->
     [{BinPath, ListOfCallTimes}|Acc].
 
 module_to_lcov(Module, CallsPerLineArray, LCovFile) ->
+    %% lcov file format description can be found here:
+    %%    https://manpages.debian.org/stretch/lcov/geninfo.1.en.html#FILES
+    %% currently this generator creates only the list of execution counts
+    %% for each instrumented line, which is enough for coveralls service.
     io:format(LCovFile, "SF:~s~n", [get_source_path(Module)]),
     CallTimes = array:to_orddict(CallsPerLineArray),
     InstrumentedLines = [{N, C} || {N, C} <- CallTimes, C =/= null],
