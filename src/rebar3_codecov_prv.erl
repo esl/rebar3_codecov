@@ -68,8 +68,8 @@ analyze(Files) ->
         {result, Result, _} = cover:analyse(Modules, calls, line),
         Result
     catch
-        Error:Reason ->
-            rebar_api:abort("~p~n~p~n~p~n",[Error, Reason, erlang:get_stacktrace()])
+        Error:Reason:Stacktrace ->
+            rebar_api:abort("~p~n~p~n~p~n",[Error, Reason, Stacktrace])
     end.
 
 export(Data, State) ->
@@ -131,10 +131,10 @@ get_source_path(Module) when is_atom(Module) ->
             rebar_api:warn("~s~n", [Issue]),
             []
     catch
-        Error:Reason ->
+        Error:Reason:Stacktrace ->
             Issue = io_lib:format("Failed to calculate the source path of module ~p~n
                                      falling back to ~s", [Module, Name]),
-            rebar_api:warn("~s~n~p~n~p~n~p~n", [Issue, Error, Reason, erlang:get_stacktrace()]),
+            rebar_api:warn("~s~n~p~n~p~n~p~n", [Issue, Error, Reason, Stacktrace]),
             Name
     end.
 
