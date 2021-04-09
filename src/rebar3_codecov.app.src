@@ -10,6 +10,6 @@
   {env,[]},
   {modules, []},
   {maintainers, ["ESL"]},
-  {licenses, []},
+  {licenses, ["MIT"]},
   {links, [{"Github", "https://github.com/esl/rebar3_codecov"}]}
  ]}.
