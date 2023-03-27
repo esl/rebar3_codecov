@@ -47,7 +47,8 @@ do(State) ->
                          end, AppsInfo),
     code:add_paths(Defaults),
     Files = lists:flatmap(fun get_coverdata_files/1, AppsInfo),
-    Data = analyze(Files),
+    ExcludeModules = lists:flatmap(fun get_excluded_modules/1, AppsInfo),
+    Data = analyze(Files, ExcludeModules),
     export(Data, State),
     {ok, State}.
 
@@ -56,7 +57,7 @@ format_error(Reason) ->
     io_lib:format("~p", [Reason]).
 
 %% Private API
-analyze(Files) ->
+analyze(Files, ExcludeModules) ->
     try
         cover:start(),
         lists:map(fun(F) ->
@@ -64,7 +65,7 @@ analyze(Files) ->
                       rebar_api:info("importing ~s~n", [F])
                   end,
                   Files),
-        Modules = cover:imported_modules(),
+        Modules = cover:imported_modules() -- ExcludeModules,
         {result, Result, _} = cover:analyse(Modules, calls, line),
         Result
     catch
@@ -170,3 +171,14 @@ get_coverdata_files(AppInfo) ->
                     end,
     rebar_api:info("Exporting cover data from ~p~n", [CoverDataPath]),
     lists:flatmap(fun filelib:wildcard/1, CoverDataPath).
+
+get_excluded_modules(AppInfo) ->
+    Opts = rebar_app_info:opts(AppInfo),
+    ExcludeModules = case dict:find(codecov_opts, Opts) of
+                         {ok, CodecovOpts} ->
+                             proplists:get_value(exclude_modules, CodecovOpts, []);
+                         _ ->
+                             []
+                     end,
+    rebar_api:info("Excluding modules from coverage report ~p~n", [ExcludeModules]),
+    ExcludeModules.
