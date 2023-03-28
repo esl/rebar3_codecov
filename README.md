@@ -12,7 +12,7 @@ post-hook and enable code coverage.
 
 ```
 {plugins, [
-    {rebar3_codecov, "0.3.0"}
+    {rebar3_codecov, "0.4.0"}
 ]}.
 
 {provider_hooks,
