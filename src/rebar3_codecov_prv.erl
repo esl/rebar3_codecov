@@ -74,10 +74,11 @@ analyze(Files, ExcludeModules) ->
     end.
 
 export(Data, State) ->
+    SrcDirs = rebar_state:get(State, src_dirs, ["src"]),
     Mod2Data = lists:foldl(fun add_cover_line_into_array/2, #{}, Data),
     Formats = export_formats(State),
-    to_json(Mod2Data, Formats),
-    to_lcov(Mod2Data, Formats).
+    to_json(SrcDirs, Mod2Data, Formats),
+    to_lcov(SrcDirs, Mod2Data, Formats).
 
 export_formats(State) ->
     {Args, _} = rebar_state:command_parsed_args(State),
@@ -85,35 +86,35 @@ export_formats(State) ->
     JSON = proplists:get_value(json, Args, true),
     #{lcov => LCov, json => JSON}.
 
-to_json(Mod2Data, #{json := true}) ->
+to_json(SrcDirs, Mod2Data, #{json := true}) ->
     rebar_api:info("exporting ~s~n", [?JSON_OUT_FILE]),
-    JSON = maps:fold(fun format_array_to_list/3, [], Mod2Data),
+    {_SrcDirs, JSON} = maps:fold(fun format_array_to_list/3, {SrcDirs, []}, Mod2Data),
     Binary = jiffy:encode(#{<<"coverage">> => {JSON}}),
     file:write_file(?JSON_OUT_FILE, Binary);
-to_json(_, _) -> ok.
+to_json(_, _, _) -> ok.
 
-to_lcov(Mod2Data, #{lcov := true}) ->
+to_lcov(SrcDirs, Mod2Data, #{lcov := true}) ->
     rebar_api:info("exporting ~s~n", [?LCOV_OUT_FILE]),
     {ok, LCovFile} = file:open(?LCOV_OUT_FILE, [write]),
-    maps:fold(fun module_to_lcov/3, LCovFile, Mod2Data),
+    maps:fold(fun module_to_lcov/3, {SrcDirs, LCovFile}, Mod2Data),
     file:close(LCovFile);
-to_lcov(_, _) -> ok.
+to_lcov(_, _, _) -> ok.
 
 add_cover_line_into_array({{Module, Line}, CallTimes}, Acc) ->
     CallsPerLineArray = maps:get(Module, Acc, array:new({default, null})),
     Acc#{Module => array:set(Line, CallTimes, CallsPerLineArray)}.
 
-format_array_to_list(Module, CallsPerLineArray, Acc) ->
+format_array_to_list(Module, CallsPerLineArray, {SrcDirs, Acc}) ->
     ListOfCallTimes = array:to_list(CallsPerLineArray),
-    BinPath = list_to_binary(get_source_path(Module)),
-    [{BinPath, ListOfCallTimes}|Acc].
+    BinPath = list_to_binary(get_source_path(Module, SrcDirs)),
+    {SrcDirs, [{BinPath, ListOfCallTimes}|Acc]}.
 
-module_to_lcov(Module, CallsPerLineArray, LCovFile) ->
+module_to_lcov(Module, CallsPerLineArray, {SrcDirs, LCovFile} = Acc) ->
     %% lcov file format description can be found here:
     %%    https://manpages.debian.org/stretch/lcov/geninfo.1.en.html#FILES
     %% currently this generator creates only the list of execution counts
     %% for each instrumented line, which is enough for coveralls service.
-    io:format(LCovFile, "SF:~s~n", [get_source_path(Module)]),
+    io:format(LCovFile, "SF:~s~n", [get_source_path(Module, SrcDirs)]),
     CallTimes = array:to_orddict(CallsPerLineArray),
     InstrumentedLines = [{N, C} || {N, C} <- CallTimes, C =/= null],
     ExecutedLines = [{N, C} || {N, C} <- InstrumentedLines, C > 0],
@@ -121,22 +122,35 @@ module_to_lcov(Module, CallsPerLineArray, LCovFile) ->
     io:format(LCovFile, "LH:~p~n", [length(ExecutedLines)]),
     io:format(LCovFile, "LF:~p~n", [length(InstrumentedLines)]),
     io:format(LCovFile, "end_of_record~n", []),
-    LCovFile.
+    Acc.
 
-get_source_path(Module) when is_atom(Module) ->
+get_source_path(Module, SrcDirs) when is_atom(Module) ->
     Name = atom_to_list(Module)++".erl",
-    try filelib:wildcard([filename:join(["src/**/", Name])]) of
+    try find_file(Name, SrcDirs) of
         [P] -> P;
-        _ ->
-            Issue = io_lib:format("Failed to calculate the source path of module ~p~n", [Module]),
+        Candidates ->
+            Issue = io_lib:format("Several candidates are found for module ~p~n ~p~n",
+                                  [Module, Candidates]),
             rebar_api:warn("~s~n", [Issue]),
-            []
+            ""
     catch
         Error:Reason:Stacktrace ->
             Issue = io_lib:format("Failed to calculate the source path of module ~p~n
                                      falling back to ~s", [Module, Name]),
             rebar_api:warn("~s~n~p~n~p~n~p~n", [Issue, Error, Reason, Stacktrace]),
             Name
+    end.
+
+find_file(Name, []) ->
+    Issue = io_lib:format("Failed to find the file location ~p~n", [Name]),
+    rebar_api:warn("~s~n", [Issue]),
+    "";
+find_file(Name, [SrcDir | SrcDirs]) ->
+    case filelib:wildcard([filename:join([SrcDir, "**/", Name])]) of
+        [] ->
+            find_file(Name, SrcDirs);
+        Other ->
+            Other
     end.
 
 add_profile_ebin_path(App, State) ->
