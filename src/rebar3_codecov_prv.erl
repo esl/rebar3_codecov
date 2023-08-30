@@ -89,7 +89,7 @@ export_formats(State) ->
 to_json(SrcDirs, Mod2Data, #{json := true}) ->
     rebar_api:info("exporting ~s~n", [?JSON_OUT_FILE]),
     {_SrcDirs, JSON} = maps:fold(fun format_array_to_list/3, {SrcDirs, []}, Mod2Data),
-    Binary = jiffy:encode(#{<<"coverage">> => {JSON}}),
+    Binary = jsone:encode(#{<<"coverage">> => {JSON}}),
     file:write_file(?JSON_OUT_FILE, Binary);
 to_json(_, _, _) -> ok.
 
