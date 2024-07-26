@@ -128,23 +128,24 @@ get_source_path(Module, SrcDirs) when is_atom(Module) ->
     Name = atom_to_list(Module)++".erl",
     try find_file(Name, SrcDirs) of
         [P] -> P;
+        [] ->
+            rebar_api:warn("Failed to find module path for ~p~n", [Module]),
+            Name;
         Candidates ->
-            Issue = io_lib:format("Several candidates are found for module ~p~n ~p~n",
-                                  [Module, Candidates]),
-            rebar_api:warn("~s~n", [Issue]),
-            ""
+            rebar_api:warn("Several candidates are found for module ~p. Candidates=~p~n",
+                           [Module, Candidates]),
+            Name
     catch
         Error:Reason:Stacktrace ->
-            Issue = io_lib:format("Failed to calculate the source path of module ~p~n
-                                     falling back to ~s", [Module, Name]),
-            rebar_api:warn("~s~n~p~n~p~n~p~n", [Issue, Error, Reason, Stacktrace]),
+            rebar_api:warn("Failed to calculate the source path of module ~p~n ~p~n"
+                           "falling back to ~s", [Module, {Error, Reason, Stacktrace}, Name]),
             Name
     end.
 
 find_file(Name, []) ->
     Issue = io_lib:format("Failed to find the file location ~p~n", [Name]),
     rebar_api:warn("~s~n", [Issue]),
-    "";
+    [];
 find_file(Name, [SrcDir | SrcDirs]) ->
     case filelib:wildcard([filename:join([SrcDir, "**/", Name])]) of
         [] ->
