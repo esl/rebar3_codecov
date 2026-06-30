@@ -11,7 +11,7 @@ Apps = case list_to_integer(erlang:system_info(otp_release)) of
            N when N >= 27 ->
                Apps0;
            _ ->
-               [jsone, rfc3339 | Apps0]
+               [jsone | Apps0]
        end,
 
-[{application, rebar3_codecov, [{applications, Apps} | Config]}].
+[{application, rebar3_codecov, [{applications, Apps} | Config0]}].
