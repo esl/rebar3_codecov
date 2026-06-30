@@ -89,7 +89,7 @@ export_formats(State) ->
 to_json(SrcDirs, Mod2Data, #{json := true}) ->
     rebar_api:info("exporting ~s~n", [?JSON_OUT_FILE]),
     {_SrcDirs, JSON} = maps:fold(fun format_array_to_list/3, {SrcDirs, []}, Mod2Data),
-    Binary = jsone:encode(#{<<"coverage">> => {JSON}}),
+    Binary = json_encode(#{<<"coverage">> => {JSON}}),
     file:write_file(?JSON_OUT_FILE, Binary);
 to_json(_, _, _) -> ok.
 
@@ -196,3 +196,19 @@ get_excluded_modules(AppInfo) ->
                      end,
     rebar_api:info("Excluding modules from coverage report ~p~n", [ExcludeModules]),
     ExcludeModules.
+
+-ifdef(OTP_RELEASE).
+  -if(?OTP_RELEASE >= 27).
+  %% OTP 27 or higher
+json_encode(Bin) ->
+    json:encode(Bin).
+  -else.
+  %% OTP 26 to 21.
+json_encode(Bin) ->
+    jsone:encode(Bin).
+  -endif.
+-else.
+  %% OTP 20 or lower.
+json_encode(Bin) ->
+    jsone:encode(Bin).
+-endif.
